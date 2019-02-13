@@ -20,7 +20,7 @@ def load(image_path):
 
     ### YOUR CODE HERE
     # Use skimage io.imread
-    pass
+    out = io.imread(image_path)
     ### END YOUR CODE
 
     # Let's convert the image to be between the correct range.
@@ -45,7 +45,7 @@ def dim_image(image):
     out = None
 
     ### YOUR CODE HERE
-    pass
+    out = 0.5 * (image * image)
     ### END YOUR CODE
 
     return out
@@ -66,7 +66,7 @@ def convert_to_grey_scale(image):
     out = None
 
     ### YOUR CODE HERE
-    pass
+    out = color.rgb2grey(image)
     ### END YOUR CODE
 
     return out
@@ -86,7 +86,9 @@ def rgb_exclusion(image, channel):
     out = None
 
     ### YOUR CODE HERE
-    pass
+    table = {'R':0, 'G':1, 'B':2}
+    out = np.copy(image)
+    out[:, :, table[channel]] = 0
     ### END YOUR CODE
 
     return out
@@ -107,7 +109,8 @@ def lab_decomposition(image, channel):
     out = None
 
     ### YOUR CODE HERE
-    pass
+    table = {'L': 0, 'A': 1, 'B': 2}
+    out = lab[:, :, table[channel]]
     ### END YOUR CODE
 
     return out
@@ -128,7 +131,8 @@ def hsv_decomposition(image, channel='H'):
     out = None
 
     ### YOUR CODE HERE
-    pass
+    table = {'H': 0, 'S': 1, 'V': 2}
+    out = hsv[:, :, table[channel]]
     ### END YOUR CODE
 
     return out
@@ -154,7 +158,10 @@ def mix_images(image1, image2, channel1, channel2):
 
     out = None
     ### YOUR CODE HERE
-    pass
+    mid = image1.shape[1] // 2
+    left = rgb_exclusion(image1, channel1)[:, :mid, :]
+    right = rgb_exclusion(image2, channel2)[:, mid:, :]
+    out = np.concatenate((left, right), axis=1)
     ### END YOUR CODE
 
     return out
@@ -183,7 +190,13 @@ def mix_quadrants(image):
     out = None
 
     ### YOUR CODE HERE
-    pass
+    h, w, _ = image.shape
+    h, w = h // 2, w // 2
+    out = np.empty_like(image)
+    out[:h, :w, :] = rgb_exclusion(image[:h, :w, :], 'R')
+    out[:h, w:, :] = dim_image(image[:h, w:, :])
+    out[h:, :w, :] = image[h:, :w, :] ** 0.5
+    out[h:, w:, :] = rgb_exclusion(image[h:, w:, :], 'R')
     ### END YOUR CODE
 
     return out
