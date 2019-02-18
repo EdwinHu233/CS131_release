@@ -36,7 +36,10 @@ def conv(image, kernel):
     padded = np.pad(image, pad_width, mode='edge')
 
     ### YOUR CODE HERE
-    pass
+    kernel_flipped = np.flip(kernel, (0, 1))
+    for i in range(Hi):
+        for j in range(Wi):
+            out[i, j] = np.sum(padded[i:i+Hk, j:j+Wk] * kernel_flipped)
     ### END YOUR CODE
 
     return out
@@ -61,7 +64,10 @@ def gaussian_kernel(size, sigma):
     kernel = np.zeros((size, size))
 
     ### YOUR CODE HERE
-    pass
+    k = size // 2
+    for i in range(size):
+        for j in range(size):
+            kernel[i, j] = np.exp(-((i-k)**2 + (j-k)**2)/(2*sigma**2)) / (2 * np.pi * sigma**2)
     ### END YOUR CODE
 
     return kernel
@@ -81,7 +87,8 @@ def partial_x(img):
     out = None
 
     ### YOUR CODE HERE
-    pass
+    kernel = np.array([0.5, 0, -0.5]).reshape((1, 3))
+    out = conv(img, kernel)
     ### END YOUR CODE
 
     return out
@@ -101,7 +108,8 @@ def partial_y(img):
     out = None
 
     ### YOUR CODE HERE
-    pass
+    kernel = np.array([0.5, 0, -0.5]).reshape((3, 1))
+    out = conv(img, kernel)
     ### END YOUR CODE
 
     return out
@@ -125,7 +133,10 @@ def gradient(img):
     theta = np.zeros(img.shape)
 
     ### YOUR CODE HERE
-    pass
+    gx = partial_x(img)
+    gy = partial_y(img)
+    G = np.sqrt(gx**2 + gy**2)
+    theta = (np.rad2deg(np.arctan2(gy, gx)) + 180) % 360
     ### END YOUR CODE
 
     return G, theta
@@ -151,7 +162,18 @@ def non_maximum_suppression(G, theta):
     theta = np.floor((theta + 22.5) / 45) * 45
 
     ### BEGIN YOUR CODE
-    pass
+    # "Edges" at the boundary will be ignored. (See comment in 'conv' function)
+    for i in range(1, H-1):
+        for j in range(1, W-1):
+            # NOTE theta[i, j] is measured clockwisely
+            t = np.deg2rad(theta[i, j])
+            offset = (int(np.round(np.sin(t))), int(np.round(np.cos(t))))
+            neighbors = [G[i + offset[0], j + offset[1]],
+                         G[i - offset[0], j - offset[1]]]
+            if G[i, j] >= np.max(neighbors):
+                out[i, j] = G[i, j]
+            else:
+                out[i, j] = 0
     ### END YOUR CODE
 
     return out
@@ -176,7 +198,8 @@ def double_thresholding(img, high, low):
     weak_edges = np.zeros(img.shape, dtype=np.bool)
 
     ### YOUR CODE HERE
-    pass
+    strong_edges = img >= high
+    weak_edges = np.bitwise_and(img < high, img >= low)
     ### END YOUR CODE
 
     return strong_edges, weak_edges
@@ -220,7 +243,7 @@ def link_edges(strong_edges, weak_edges):
     Args:
         strong_edges: binary image of shape (H, W).
         weak_edges: binary image of shape (H, W).
-    
+
     Returns:
         edges: numpy boolean array of shape(H, W).
     """
@@ -235,7 +258,13 @@ def link_edges(strong_edges, weak_edges):
     edges = np.copy(strong_edges)
 
     ### YOUR CODE HERE
-    pass
+    queue = [(y, x) for (y, x) in indices]
+    while len(queue) != 0:
+        i, j = queue.pop(0)
+        edges[i, j] = True
+        for x, y in get_neighbors(i, j, H, W):
+            if weak_edges[x, y] and not edges[x, y]:
+                queue.append((x, y))
     ### END YOUR CODE
 
     return edges
@@ -253,7 +282,12 @@ def canny(img, kernel_size=5, sigma=1.4, high=20, low=15):
         edge: numpy array of shape(H, W).
     """
     ### YOUR CODE HERE
-    pass
+    kernel = gaussian_kernel(kernel_size, sigma)
+    smoothed = conv(img, kernel)
+    G, theta = gradient(smoothed)
+    nms = non_maximum_suppression(G, theta)
+    strong_edges, weak_edges = double_thresholding(nms, high, low)
+    edge = link_edges(strong_edges, weak_edges)
     ### END YOUR CODE
 
     return edge
@@ -268,7 +302,7 @@ def hough_transform(img):
 
     Args:
         img: binary image of shape (H, W).
-        
+
     Returns:
         accumulator: numpy array of shape (m, n).
         rhos: numpy array of shape (m, ).
